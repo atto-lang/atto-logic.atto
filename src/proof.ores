@@ -29,7 +29,8 @@ define module proof as
     fi
     let int index = -1;
     for (let i = 0; i < kb.derivations.length(); i++) {
-      if datalog.same(rt borrow kb.derivations.get(i).conclusion,
+      val candidate = kb.derivations.get(i);
+      if datalog.same(rt borrow candidate.conclusion,
                       rt borrow target); then
         index = i;
         break;
