@@ -330,9 +330,11 @@ define module datalog as
       for (let i = 0; i < rules.length(); i++) {
         val rule = rules.get(i);
         for (let anchor = 0; anchor < rule.body.length(); anchor++) {
+          val fresh = unify.empty();
+          val no_witnesses = new Array<Atom>();
           val expanded = join_from(rt borrow rule, i, 0, anchor,
                                     rt borrow known, rt borrow delta,
-                                    rt borrow unify.empty(), rt borrow new Array<Atom>(),
+                                    rt borrow fresh, rt borrow no_witnesses,
                                     remaining);
           if expanded.is_err(); then
             return Err("Datalog work or substitution budget exceeded");
