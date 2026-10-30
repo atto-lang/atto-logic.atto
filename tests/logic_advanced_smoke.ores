@@ -112,7 +112,8 @@ define module logic_advanced_smoke as
     branches.add(new relate.Branch(good));
     val search = relate.run(rt borrow branches, 20, 5);
     if search.is_err(); then return false; fi
-    if !search.unwrap().complete || search.unwrap().answers.length() != 1; then
+    val search_result = search.unwrap();
+    if !search_result.complete || search_result.answers.length() != 1; then
       return false;
     fi
     val truncated = relate.run(rt borrow branches, 1, 5);
@@ -129,9 +130,10 @@ define module logic_advanced_smoke as
     samples.add(new induce.Example("noise", true, false, true));
     val scores = induce.score(rt borrow samples, 2, 2, 900);
     if scores.is_err(); then return false; fi
-    if scores.unwrap().length() != 2; then return false; fi
-    if !scores.unwrap().get(0).accepted; then return false; fi
-    if scores.unwrap().get(1).accepted; then return false; fi
+    val ranked = scores.unwrap();
+    if ranked.length() != 2; then return false; fi
+    if !ranked.get(0).accepted; then return false; fi
+    if ranked.get(1).accepted; then return false; fi
     return true;
   }
 end
