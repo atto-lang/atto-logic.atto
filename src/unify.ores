@@ -119,8 +119,10 @@ define module unify as
     fi
     let mut Substitution next = env;
     for (let i = 0; i < a.arguments.length(); i++) {
-      val step = unify(rt borrow a.arguments.get(i),
-                       rt borrow b.arguments.get(i), rt borrow next,
+      val left_child = a.arguments.get(i);
+      val right_child = b.arguments.get(i);
+      val step = unify(rt borrow left_child,
+                       rt borrow right_child, rt borrow next,
                        depth - 1, max_bindings);
       if step.is_err(); then return Err("compound unification failed"); fi
       val matched = step.unwrap();
