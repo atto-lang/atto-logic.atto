@@ -117,7 +117,7 @@ define module unify as
        a.arguments.length() != b.arguments.length(); then
       return Ok(new Match(false, env));
     fi
-    let Substitution next = env;
+    let mut Substitution next = env;
     for (let i = 0; i < a.arguments.length(); i++) {
       val step = unify(rt borrow a.arguments.get(i),
                        rt borrow b.arguments.get(i), rt borrow next,
