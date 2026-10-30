@@ -67,8 +67,9 @@ define module term as
       return Ok(false);
     fi
     for (let i = 0; i < a.arguments.length(); i++) {
-      val e = equals(rt borrow a.arguments.get(i),
-                     rt borrow b.arguments.get(i), depth - 1);
+      val left_child = a.arguments.get(i);
+      val right_child = b.arguments.get(i);
+      val e = equals(rt borrow left_child, rt borrow right_child, depth - 1);
       if e.is_err(); then return Err("term comparison depth exceeded"); fi
       if !e.unwrap(); then return Ok(false); fi
     }
