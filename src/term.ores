@@ -21,12 +21,16 @@ define module term as
       self.arguments = arguments;
     }
 
-    pub is_ground(): bool {
-      if self.kind == 0; then return false; fi
+    // A bounded check, including for malformed cyclic application graphs.
+    pub is_ground(int depth): Result<bool, String> {
+      if depth <= 0; then return Err("term groundness depth exceeded"); fi
+      if self.kind == 0; then return Ok(false); fi
       for (const child of self.arguments) {
-        if !child.is_ground(); then return false; fi
+        val result = child.is_ground(depth - 1);
+        if result.is_err(); then return Err("term groundness depth exceeded"); fi
+        if !result.unwrap(); then return Ok(false); fi
       }
-      return true;
+      return Ok(true);
     }
   end
 
