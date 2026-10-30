@@ -49,8 +49,12 @@ resource budgets return `Err`; there is no silent truncation of deductions.
 - `tests/logic_smoke.ores`: propositional and baseline Horn tests.
 - `tests/logic_advanced_smoke.ores`: recursive rules, proof trace, typed
   unification, occurs check, budgets, unsafe rules, fair search and induction.
-- `tests/main.ores`: runs both suites, returning exit code `0` on success,
-  `1` or `2` on failure.
+- `tests/logic_edge_cases.ores`: indirect cyclic terms, invalid schemas,
+  empty-body rules, zero-arity facts, invalid limits and holdout rejection.
+- `tests/compiler_canary.ores`: independent scalar compiler/runner admission
+  test; it does **not** exercise the logic engine.
+- `tests/main.ores`: runs all three logic suites; exit `0` means success,
+  `1`/`2`/`3` identify the failing suite.
 - `.ores.pkg.toml`: package discovery and source roots.
 
 **Execution status: not yet verified.** No genuine compiler has run these
