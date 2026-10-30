@@ -59,8 +59,8 @@ define module proof as
     if !kb.contains(rt borrow target); then
       return Err("target not derivable in knowledge base");
     fi
+    val empty_steps = new Array<datalog.Derivation>();
     return visit(rt borrow kb, rt borrow target,
-                 rt borrow new Array<datalog.Derivation>(),
-                 max_nodes, max_depth);
+                 rt borrow empty_steps, max_nodes, max_depth);
   }
 end
