@@ -178,8 +178,10 @@ define module datalog as
     fi
     let mut unify.Substitution bindings = env;
     for (let i = 0; i < pattern.values.length(); i++) {
-      val step = unify.unify(rt borrow pattern.values.get(i),
-                             rt borrow fact.values.get(i),
+      val left_cell = pattern.values.get(i);
+      val right_cell = fact.values.get(i);
+      val step = unify.unify(rt borrow left_cell,
+                             rt borrow right_cell,
                              rt borrow bindings, 64, 512);
       if step.is_err(); then return Err("Datalog unification failed"); fi
       val m = step.unwrap();
