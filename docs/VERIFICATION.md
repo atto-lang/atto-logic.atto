@@ -1,41 +1,94 @@
-# Verification gate (do not claim executable parity without runs)
+# Genuine compiler-backed execution gate
 
-This package contains only Oreslang implementation files. Test fixtures under
-`tests/` are also pure Oreslang. The package is a userland library, not a
-compiler dialect and not linked to Java/C++/.NET/JS/Python/FFI.
+**State: BLOCKED / NOT EXECUTED (2026-10-30).** Source-only audits are not
+compiler parsing, type checking, guest execution or backend parity.
 
-## Required execution proof
+## Scope: only Oreslang guest code
 
-1. Pin the package branch commit and each genuine compiler/runtime source SHA.
-2. Build a genuine Oreslang compiler and record executable SHA-256. Do not
-   substitute a host implementation or an isolated source-free model.
-3. Parse/type-check **every** `.ores` file; require no skipped or unrecognized
-   constructs; verify import/manifest resolution and ownership diagnostics.
-4. Compile and execute `tests/main.ores` in Java/GraalVM, LLVM AOT, WASM,
-   Forge and .NET AOT, checking exit status 0.
-5. Run negative tests in `tests/logic_advanced_smoke.ores`: occurs check,
-   type mismatch, unsafe range-restriction, proof budget, work budget, fact
-   budget, and relational-search truncation.
-6. Add independent differential oracle tests, adversarial depth/size tests,
-   cancellation tests, sanitized native runs, and hot-reload actor-lifetime
-   checks before production usage or resource guarantee claims.
-7. Require source-review and branch-protection gates. No private source mirror
-   to a carrier until repository security/admission policy is independently
-   verified and approved.
+All implementation and regression programs are `.ores`. A compiler, CI
+runner, Maven/Clang build system or shell harness may be used to **execute**
+these programs, but none may implement or replace logic operations in the
+library. No Java/C++/C#/JavaScript/Python/FFI solver is allowed in this package.
 
-## Status
+There are three independent admission levels; do not collapse them.
 
-Source committed; compiler-backed parsing, type checking, running and
-five-backend parity **NOT EXECUTED/NOT VERIFIED** as of 2026-10-30.
-No compiler executable is available in the current local environment.
-Do not treat source-only static checks as executable tests.
+### Gate 1: runner and genuine compiler canary
 
-## Portability hazards to verify
+For each backend (Java/GraalVM, LLVM, WASM, Forge, .NET):
 
-- Recursive `Term` arrays and class ownership/borrowed return paths.
-- `Array<T>` constructors, `add`/`get`/`length()` and mutable locals.
-- Import graph and package namespace rules.
-- `Result` error propagation, constructor visibility and method declaration forms.
-- Strict budgets and error results on every backend.
-- No guarantee of zero allocations, hard real time, frozen arrays, or
-  deep immutability of values stored in publicly accessible arrays.
+1. Record exact package-tree SHA, compiler source SHA, compiler binary SHA-256,
+   runtime variant, execution host and runner ID; require independent provenance.
+2. Require real runner assignment: a completed run with **at least one executed
+   step**, an actual compiler process and actual guest process.
+3. Compile `tests/compiler_canary.ores` using that backend's authentic
+   compiler. Execute the compiled guest program. Require exit status **0**.
+4. Do not replace the guest with a host-side model or compare only text/IR.
+
+The canary deliberately exercises scalar syntax only. Passing it proves
+compiler + runner admission, **not** the logic-engine behavior.
+
+### Gate 2: full-library compilation and execution
+
+1. On the same pinned revisions, compiler-parse and type-check
+   `tests/main.ores` and its *entire import closure*, including
+   `src/term.ores`, `src/unify.ores`, `src/datalog.ores`,
+   `src/proof.ores`, `src/relate.ores`, `src/induce.ores`,
+   `src/horn.ores`, `src/propositional.ores`, and all three
+   `tests/logic_*.ores` suites.
+2. Execute the compiled `tests/main.ores` guest and require exit status **0**.
+   Exit codes 1, 2, 3 respectively identify baseline, advanced and negative
+   edge-case fixture failure; all nonzero statuses must fail the gate.
+3. Check negative assertions: occurs-check and sort mismatches,
+   unsafe head variables, wrong schema, duplicate schema, invalid budgets,
+   incomplete search flags, missing proof and held-out hypothesis rejection.
+4. No skipped tests, unexecuted compiler invocations, silent fallback to a
+   host-only emulator, or 'model pass' counted as an execution pass.
+
+The Java/GraalVM `dev.oreslang.launcher.OresMain` has a real `--check`
+option; use it for compile-only checking, then invoke the actual guest
+execution CLI (without `--check`). The Java compiler must be built from a
+pinned commit using its own documented build process, not fabricated inside
+this package. The native LLVM README documents the genuine
+`oreslang-llvmc` -> LLVM IR -> `clang` AOT execution path. Run the canary
+with the native compiler first. Its current documented general heap/object
+limitations block a full-library LLVM pass; keep this as a visible parity
+blocker until corrected and executed. Do not assert the other backends pass
+without corresponding exact-head evidence.
+
+### Gate 3: behavioral equivalence and safety
+
+- Require identical answers, error classes, proof witness ordering and resource
+  exhaustion across all five backends.
+- Run repeated, randomized **Oreslang** fixture generators, adversarial
+  depth/width budgets, cancellation, actor generation release, sanitizers
+  and memory ownership checks.
+- Benchmark allocation count, bytes per fact, index memory, and worst-case tail
+  latency before claiming zero-allocation or hard-real-time suitability.
+- Obtain independent code review, enforced non-empty required checks and branch
+  protection before merging.
+
+## Source-org evidence at inspection
+
+On 2026-10-30 the logic repository had no GitHub Actions runs. The Java and
+LLVM source organizations' latest sampled jobs failed with **zero executed
+steps** (Java run `41110063580`, job `124249866636`; LLVM run
+`41110095477`, job `124249977129`). Neither Java nor LLVM had a
+published GitHub Release containing a ready-to-use compiler executable. The
+development container had `java` but **no** `oreslang` or
+`oreslang-llvmc` executable.
+
+Do not mirror any private source or PR tree into an alternate organization
+solely to escape Actions quota. First verify governance/admission and an
+approved destination allowlist, with exact SHA and per-blob integrity,
+independent reviews, and source-owner approval. Prefer authenticated
+same-repo/private runners that cannot expose the code to outside actors.
+
+## Next action
+
+Provision or obtain **one** genuine pinned Oreslang compiler executable,
+execute `tests/compiler_canary.ores`, then attempt the full library on
+that same compiler. Record the **first actual parser/type/ownership diagnostic**
+rather than guessing which source construct fails. Fix in the logic PR if
+the source is invalid; if a valid guest construct is missing in the backend,
+open a backend-specific parity issue. Continue other backends only after
+recording real runner and executable evidence.
