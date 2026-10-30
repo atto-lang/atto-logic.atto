@@ -23,12 +23,14 @@ define module logic_advanced_smoke as
     val carol = term.symbol("carol");
 
     // Typed scalar substitution and type mismatch.
+    val empty_subs = unify.empty();
+    val numeral_four = term.integer(4);
     val assignment = unify.unify(rt borrow x, rt borrow alice,
-                                  rt borrow unify.empty(), 64, 32);
+                                  rt borrow empty_subs, 64, 32);
     if assignment.is_err(); then return false; fi
     if !assignment.unwrap().matched; then return false; fi
-    val mismatch = unify.unify(rt borrow x, rt borrow term.integer(4),
-                                rt borrow unify.empty(), 64, 32);
+    val mismatch = unify.unify(rt borrow x, rt borrow numeral_four,
+                                rt borrow empty_subs, 64, 32);
     if mismatch.is_err(); then return false; fi
     if mismatch.unwrap().matched; then return false; fi
 
@@ -38,7 +40,7 @@ define module logic_advanced_smoke as
     children.add(recursive_var);
     val tree = term.application("box", children);
     val cycle = unify.unify(rt borrow recursive_var, rt borrow tree,
-                            rt borrow unify.empty(), 64, 32);
+                            rt borrow empty_subs, 64, 32);
     if cycle.is_err(); then return false; fi
     if cycle.unwrap().matched; then return false; fi
 
