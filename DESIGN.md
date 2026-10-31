@@ -13,7 +13,7 @@ This is a library, not a new syntax dialect or required compiler extension.
 - `term`: symbol/int/bool values, typed variables and structured application
   terms. Tags are checked at runtime; not yet compile-time generic relation types.
 - `unify`: substitution-based first-order matching with an occurs check, type
-  compatibility, bounded dereferencing depth and binding count.
+  compatibility, bounded dereferencing depth, binding count and shared work fuel.
 - `datalog`: schema-checked relations with 1=symbol, 2=int, 3=bool columns,
   positive safe rules, semi-naive delta evaluation, deterministic first
   derivations, and explicit `max_facts`/`max_work` failures.
@@ -45,10 +45,19 @@ terms are supported only in general unification. Unification failures return
 
 - Datalog: `max_facts <= 10000`, `max_work <= 1000000`, schema/rule and
   arity limits. Exhaustion fails rather than returning an incomplete closure.
-  Its work bound counts candidate join attempts, not actual CPU instructions.
+  The budget is shared across candidate join attempts, term unification,
+  variable binding scans and occurs-check recursion. Other operations such as
+  schema validation, fact-set scans, derivation materialization and proof
+  extraction are not charged to this counter; it is **not** a hard
+  wall-clock or all-instruction execution bound.
 - Propositional Horn: explicit fact-budget failure.
-- Unification: explicit substitution depth and binding count caps. These are
-  **not yet a total recursive-node-work bound** for wide compound terms.
+- Unification: `unify_bounded(left, right, env, depth, max_bindings, max_work)`
+  threads one work-fuel counter across recursive compound arguments, alias
+  dereferences, binding scans, occurs-check branches and binding copies.
+  `unify(...)` keeps the original API with a fixed 65,536-operation ceiling.
+  `resolve(...)` also uses a fixed bound. Exhaustion returns `Err`, never
+  a successful match or a false logical result. This counter tracks explicit
+  algorithmic visits, not instructions, allocation bytes or wall-clock time.
 - Relational search: finite branches only; result has `complete=false` when
   step/answer limits truncate evaluation.
 - Induction: <=10000 rows with 1,000-point integer precision and explicit
@@ -61,7 +70,8 @@ terms are supported only in general unification. Unification failures return
 ## Next engineering gates
 
 1. Genuine compiler parse, typecheck and guest execution of `tests/main.ores`.
-2. Expanded error classification and explicit total unification-work fuel.
+2. Exact-head execution, expanded error classification and stricter
+   immutable input/ownership contracts.
 3. Strongly typed relation APIs and actor-owned indexed/SoA data layouts.
 4. Full proof DAG retention, alternative derivations and incremental retraction.
 5. Stratified Datalog negation with verified strata; recursive relational
