@@ -53,8 +53,10 @@ resource budgets return `Err`; there is no silent truncation of deductions.
   empty-body rules, zero-arity facts, invalid limits and holdout rejection.
 - `tests/compiler_canary.ores`: independent scalar compiler/runner admission
   test; it does **not** exercise the logic engine.
-- `tests/main.ores`: runs all three logic suites; exit `0` means success,
-  `1`/`2`/`3` identify the failing suite.
+- `tests/logic_differential.ores`: independent positive Horn/Datalog
+  fixed-point equivalence checks, recursive cycles and fact-budget failures.
+- `tests/main.ores`: runs all four logic suites; exit `0` means success,
+  `1`/`2`/`3`/`4` identify the failing suite.
 - `.ores.pkg.toml`: package discovery and source roots.
 
 **Execution status: not yet verified.** No genuine compiler has run these
