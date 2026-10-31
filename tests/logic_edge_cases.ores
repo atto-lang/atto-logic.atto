@@ -240,6 +240,59 @@ define module logic_edge_cases as
     return true;
   }
 
+  fnc datalog_malformed_term_edges(): bool {
+    let mut Array<int> symbol_column = new Array<int>();
+    symbol_column.add(1);
+    let mut Array<datalog.Schema> schemas = new Array<datalog.Schema>();
+    schemas.add(new datalog.Schema("mark", symbol_column));
+
+    let mut Array<term.Term> valid_values = new Array<term.Term>();
+    valid_values.add(term.symbol("alice"));
+    val valid = new datalog.Atom("mark", valid_values);
+    let mut Array<datalog.Atom> seeds = new Array<datalog.Atom>();
+    seeds.add(valid);
+    val no_rules = new Array<datalog.Rule>();
+    val evaluated = datalog.evaluate(rt borrow schemas, rt borrow seeds,
+                                      rt borrow no_rules, 2, 100);
+    if evaluated.is_err(); then return false; fi
+    val kb = evaluated.unwrap();
+    if !kb.contains(rt borrow valid); then return false; fi
+
+    // The raw Term constructor is public. Public membership queries must
+    // reject a forged type_id, even if the kind and symbol value match.
+    let mut Array<term.Term> wrong_type_values = new Array<term.Term>();
+    wrong_type_values.add(new term.Term(1, 2, -1, "alice", 0, false,
+                                        new Array<term.Term>()));
+    val wrong_type_query = new datalog.Atom("mark", wrong_type_values);
+    if kb.contains(rt borrow wrong_type_query); then return false; fi
+    if datalog.same(rt borrow valid, rt borrow wrong_type_query); then
+      return false;
+    fi
+
+    // Forged scalar applications are not valid flat relational columns.
+    let mut Array<term.Term> children = new Array<term.Term>();
+    children.add(term.symbol("extra"));
+    let mut Array<term.Term> wrong_shape_values = new Array<term.Term>();
+    wrong_shape_values.add(new term.Term(1, 1, -1, "alice", 0, false,
+                                         children));
+    val wrong_shape_query = new datalog.Atom("mark", wrong_shape_values);
+    if kb.contains(rt borrow wrong_shape_query); then return false; fi
+
+    // Similarly, an apparent rule variable carrying children must be
+    // rejected at rule-validation time rather than silently matched.
+    let mut Array<term.Term> forged_var_values = new Array<term.Term>();
+    forged_var_values.add(new term.Term(0, 1, 7, "", 0, false, children));
+    val forged_pattern = new datalog.Atom("mark", forged_var_values);
+    let mut Array<datalog.Atom> body = new Array<datalog.Atom>();
+    body.add(forged_pattern);
+    let mut Array<datalog.Rule> invalid = new Array<datalog.Rule>();
+    invalid.add(new datalog.Rule(forged_pattern, body));
+    val rejected = datalog.evaluate(rt borrow schemas, rt borrow seeds,
+                                     rt borrow invalid, 2, 100);
+    if !rejected.is_err(); then return false; fi
+    return true;
+  }
+
   fnc relational_edges(): bool {
     val branches = new Array<relate.Branch>();
     val empty_result = relate.run(rt borrow branches, 4, 4);
@@ -272,6 +325,7 @@ define module logic_edge_cases as
     if !unification_work_edges(); then return false; fi
     if !datalog_edges(); then return false; fi
     if !datalog_shared_fuel_edges(); then return false; fi
+    if !datalog_malformed_term_edges(); then return false; fi
     if !relational_edges(); then return false; fi
     if !induction_edges(); then return false; fi
     return true;
