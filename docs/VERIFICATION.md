@@ -42,6 +42,9 @@ compiler + runner admission, **not** the logic-engine behavior.
 3. Check negative assertions: occurs-check and sort mismatches,
    unsafe head variables, wrong schema, duplicate schema, invalid budgets,
    incomplete search flags, missing proof and held-out hypothesis rejection.
+   Assert `unify_bounded` rejects work-budget exhaustion for wide terms,
+   late occurs checks, and alias chains; assert Datalog propagates one
+   budget across join candidates and unification.
 4. No skipped tests, unexecuted compiler invocations, silent fallback to a
    host-only emulator, or 'model pass' counted as an execution pass.
 
