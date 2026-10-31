@@ -202,6 +202,44 @@ define module logic_edge_cases as
     return true;
   }
 
+  fnc datalog_shared_fuel_edges(): bool {
+    // One join candidate and a single typed comparison. Charging only the
+    // outer join would incorrectly make this tiny work budget sufficient.
+    let mut Array<datalog.Schema> schemas = new Array<datalog.Schema>();
+    let mut Array<int> one_int = new Array<int>();
+    one_int.add(2);
+    schemas.add(new datalog.Schema("source", one_int));
+    schemas.add(new datalog.Schema("derived", one_int));
+
+    let mut Array<term.Term> seed_columns = new Array<term.Term>();
+    seed_columns.add(term.integer(42));
+    let mut Array<datalog.Atom> seed = new Array<datalog.Atom>();
+    seed.add(new datalog.Atom("source", seed_columns));
+
+    let v = term.variable(7, 2);
+    let mut Array<term.Term> vars = new Array<term.Term>();
+    vars.add(v);
+    let mut Array<datalog.Atom> body = new Array<datalog.Atom>();
+    body.add(new datalog.Atom("source", vars));
+    let mut Array<datalog.Rule> rules = new Array<datalog.Rule>();
+    rules.add(new datalog.Rule(new datalog.Atom("derived", vars), body));
+
+    val insufficient = datalog.evaluate(rt borrow schemas, rt borrow seed,
+                                         rt borrow rules, 2, 2);
+    if !insufficient.is_err(); then return false; fi
+
+    val full = datalog.evaluate(rt borrow schemas, rt borrow seed,
+                                rt borrow rules, 2, 256);
+    if full.is_err(); then return false; fi
+    val known = full.unwrap();
+    if known.facts.length() != 2; then return false; fi
+    let mut Array<term.Term> target_columns = new Array<term.Term>();
+    target_columns.add(term.integer(42));
+    val target = new datalog.Atom("derived", target_columns);
+    if !known.contains(rt borrow target); then return false; fi
+    return true;
+  }
+
   fnc relational_edges(): bool {
     val branches = new Array<relate.Branch>();
     val empty_result = relate.run(rt borrow branches, 4, 4);
@@ -233,6 +271,7 @@ define module logic_edge_cases as
     if !unification_edges(); then return false; fi
     if !unification_work_edges(); then return false; fi
     if !datalog_edges(); then return false; fi
+    if !datalog_shared_fuel_edges(); then return false; fi
     if !relational_edges(); then return false; fi
     if !induction_edges(); then return false; fi
     return true;
