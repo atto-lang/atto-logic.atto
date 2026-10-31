@@ -33,11 +33,12 @@ compiler + runner admission, **not** the logic-engine behavior.
    `tests/main.ores` and its *entire import closure*, including
    `src/term.ores`, `src/unify.ores`, `src/datalog.ores`,
    `src/proof.ores`, `src/relate.ores`, `src/induce.ores`,
-   `src/horn.ores`, `src/propositional.ores`, and all three
+   `src/horn.ores`, `src/propositional.ores`, and all four
    `tests/logic_*.ores` suites.
 2. Execute the compiled `tests/main.ores` guest and require exit status **0**.
-   Exit codes 1, 2, 3 respectively identify baseline, advanced and negative
-   edge-case fixture failure; all nonzero statuses must fail the gate.
+   Exit codes 1, 2, 3, 4 respectively identify baseline, advanced,
+   edge-case and Horn/Datalog differential fixture failure; all nonzero
+   statuses must fail the gate.
 3. Check negative assertions: occurs-check and sort mismatches,
    unsafe head variables, wrong schema, duplicate schema, invalid budgets,
    incomplete search flags, missing proof and held-out hypothesis rejection.
