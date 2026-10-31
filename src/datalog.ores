@@ -75,11 +75,19 @@ define module datalog as
     for (let i = 0; i < a.values.length(); i++) {
       val x = a.values.get(i);
       val y = b.values.get(i);
-      if x.kind != y.kind; then return false; fi
+      // Membership queries are public input. Reject forged term metadata:
+      // a same-valued symbol with an integer type_id or application children
+      // must never be mistaken for a valid database fact.
+      if x.kind != y.kind || x.type_id != y.type_id; then
+        return false;
+      fi
+      if x.kind < 1 || x.kind > 3 || x.type_id != x.kind ||
+         x.arguments.length() != 0 || y.arguments.length() != 0; then
+        return false;
+      fi
       if x.kind == 1 && x.text != y.text; then return false; fi
       if x.kind == 2 && x.number != y.number; then return false; fi
       if x.kind == 3 && x.truth != y.truth; then return false; fi
-      if x.kind < 1 || x.kind > 3; then return false; fi
     }
     return true;
   }
@@ -109,7 +117,9 @@ define module datalog as
       val expected = signature.columns.get(j);
       if cell.type_id != expected; then return false; fi
       if cell.kind == 0; then
-        if !allow_vars || cell.variable_id < 0; then return false; fi
+        // Variables in rule bodies/heads must be flat typed placeholders.
+        if !allow_vars || cell.variable_id < 0 ||
+           cell.arguments.length() != 0; then return false; fi
       else
         if cell.kind != expected || cell.arguments.length() != 0; then
           return false;
