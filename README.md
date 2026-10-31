@@ -17,7 +17,7 @@ language construct used here.
 | `src/propositional.ores` | implication, equivalence, XOR, all/any/none |
 | `src/horn.ores` | bounded propositional positive Horn deduction |
 | `src/term.ores` | typed variables, values, structured terms |
-| `src/unify.ores` | first-order unification with occurs check |
+| `src/unify.ores` | occurs-checked unification with shared operation fuel |
 | `src/datalog.ores` | schema-typed positive Datalog with semi-naive joins |
 | `src/proof.ores` | first-witness provenance extraction |
 | `src/relate.ores` | FIFO-fair finite equality-goal branches |
@@ -49,8 +49,9 @@ resource budgets return `Err`; there is no silent truncation of deductions.
 - `tests/logic_smoke.ores`: propositional and baseline Horn tests.
 - `tests/logic_advanced_smoke.ores`: recursive rules, proof trace, typed
   unification, occurs check, budgets, unsafe rules, fair search and induction.
-- `tests/logic_edge_cases.ores`: indirect cyclic terms, invalid schemas,
-  empty-body rules, zero-arity facts, invalid limits and holdout rejection.
+- `tests/logic_edge_cases.ores`: indirect cyclic terms, wide-term
+  fuel exhaustion, alias chains, Datalog shared work limits, invalid schemas,
+  empty-body rules, zero-arity facts and holdout rejection.
 - `tests/compiler_canary.ores`: independent scalar compiler/runner admission
   test; it does **not** exercise the logic engine.
 - `tests/logic_differential.ores`: independent positive Horn/Datalog
