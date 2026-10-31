@@ -96,3 +96,48 @@ rather than guessing which source construct fails. Fix in the logic PR if
 the source is invalid; if a valid guest construct is missing in the backend,
 open a backend-specific parity issue. Continue other backends only after
 recording real runner and executable evidence.
+
+## October 30: latest runner-admission diagnosis
+
+The same-organization Java/GraalVM integration workflow remained **NOT
+EXECUTED** at [run #41157594708](https://github.com/ores-truffle-oreslang/oreslang-source.java/actions/runs/41157594708),
+commit `61badbd0bb8b4dcf12d0c7b798b6ebb03f10ad2a`.
+The Actions job API reported `runner_id=0`, an empty `runner_name`,
+**zero job steps**, and termination roughly three seconds after job start.
+The corresponding check-run metadata reports **two annotations**, but their
+contents are inaccessible through the current read-only repository connector.
+Do not guess the message or classify this as an Oreslang test failure.
+
+An independent source-free admission probe in private
+`honeypot-r-us-test/hnpt-docs`, [run #41153246476](https://github.com/honeypot-r-us-test/hnpt-docs/actions/runs/41153246476),
+also terminated without any job steps. Earlier success on that carrier does
+not prove *current* runner availability, and no private Oreslang code was
+copied there.
+
+**Admin investigation, without another redundant workflow run:**
+
+1. Read the exact failed-check annotations in GitHub's web UI and record
+   their text without credentials, email notification tokens, or secrets.
+2. If they indicate billing, inspect the owning organization's
+   **Settings → Billing & Licensing → Payment information** for past-due
+   charges and the GitHub Actions budget, metered usage, and
+   stop-usage flag. Budget room alone does not prove payment eligibility.
+   See GitHub's [troubleshooting guide](https://docs.github.com/en/actions/how-tos/troubleshoot-workflows)
+   and [billing guide](https://docs.github.com/en/billing/how-tos/set-up-payment/manage-payment-info).
+3. Check repository and organizational **Settings → Actions → General**
+   for restrictions on GitHub-hosted runners and required actions. A
+   GitHub-controlled Actions suspension may require GitHub Support.
+4. If the UI shows neither billing nor policy blockage, ask GitHub Support
+   to investigate the recorded run/job/check identifiers, including whether
+   runner provisioning is blocked by the account-level execution gate.
+5. Only after resolving the documented cause, run a source-free one-step
+   admission canary. Demand a nonzero `runner_id`, actual executed steps,
+   and a successful completed process before retrying the full compiler.
+6. Refresh the pinned `ci/logic_lib/` snapshot from current PR #2,
+   verify all Git blob SHAs against that exact PR head, then execute the
+   genuine GraalVM compiler canary and four logic suites. The existing
+   snapshot is **stale whenever PR #2 receives source changes**.
+
+Never infer a compiler pass from static file checks, a queued run, or an
+Actions job that was never assigned a runner. Do not transfer private source
+across organizations merely because an older carrier run once succeeded.
