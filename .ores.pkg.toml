@@ -6,5 +6,5 @@ version = "0.1.0"
 root = "."
 
 [source]
-roots = ["src", "tests"]
+roots = ["src", "tests", "vendor"]
 import_paths = []
