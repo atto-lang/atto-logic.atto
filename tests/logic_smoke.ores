@@ -36,6 +36,10 @@ define module logic_smoke as
     if !propositional.implies(false, true); then return false; fi
     if !propositional.exclusive_or(false, true); then return false; fi
     if propositional.equivalent(false, true); then return false; fi
+    // 2026-11-01 follow-up: both false arguments preserve equivalence,
+    // while exclusive-or must reject a false/false pair.
+    if !propositional.equivalent(false, false); then return false; fi
+    if propositional.exclusive_or(false, false); then return false; fi
     return true;
   }
 end
