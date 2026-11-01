@@ -1,0 +1,6 @@
+logic/extended/implies/false-premise
+logic/extended/implies/true-false
+logic/extended/equivalent/truth-table
+logic/extended/xor/truth-table
+logic/extended/quantifiers/empty
+logic/extended/term/groundness-depth
