@@ -16,11 +16,25 @@ fnc empty_conjunction_is_true(): TestOutcome {
     propositional.none_of(rt borrow values),
     "empty conjunction and none-of must both be true");
 }
+fnc empty_disjunction_is_false(): TestOutcome {
+  val Array<bool> values = arr[];
+  return expect_false(propositional.any_of(rt borrow values),
+    "any_of on zero premises is false");
+}
+
+fnc equivalence_requires_matching_truth(): TestOutcome {
+  return expect_true(propositional.equivalent(false, false)
+    && !propositional.equivalent(false, true),
+    "equivalence matches equal truth values only");
+}
+
 pub routine main(): void {
   val TestSuite suite = new TestSuite("logic", arr[
     new TestCase("vacuous_implication_holds", vacuous_implication_holds, false, ""),
     new TestCase("xor_excludes_identical_inputs", xor_excludes_identical_inputs, false, ""),
-    new TestCase("empty_conjunction_is_true", empty_conjunction_is_true, false, "")
+    new TestCase("empty_conjunction_is_true", empty_conjunction_is_true, false, ""),
+    new TestCase("empty_disjunction_is_false", empty_disjunction_is_false, false, ""),
+    new TestCase("equivalence_requires_matching_truth", equivalence_requires_matching_truth, false, "")
   ]);
   val TestOptions options = new TestOptions("", false, true);
   val RunSummary summary = run_suite(rt borrow suite, rt borrow options);
