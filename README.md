@@ -60,6 +60,11 @@ resource budgets return `Err`; there is no silent truncation of deductions.
   `1`/`2`/`3`/`4` identify the failing suite.
 - `.ores.pkg.toml`: package discovery and source roots.
 
+A new `.github/workflows/source-integrity.yml` checks exact checkout identity,
+required source/guest-test file presence, and three negative structural controls
+(missing, empty, symlink). **That workflow is source-only, not compiler or guest
+execution**; a green status does not certify logic semantics or native parity.
+
 **Execution status: not yet verified.** No genuine compiler has run these
 fixtures in this development session. The library does not claim five-backend
 parity or zero allocations. See [DESIGN.md](DESIGN.md) and
