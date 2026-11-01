@@ -10,10 +10,17 @@ fnc xor_excludes_identical_inputs(): TestOutcome {
     && propositional.exclusive_or(true, false),
     "exclusive or is true only when operands differ");
 }
+fnc empty_conjunction_is_true(): TestOutcome {
+  val Array<bool> values = arr[];
+  return expect_true(propositional.all_of(rt borrow values) &&
+    propositional.none_of(rt borrow values),
+    "empty conjunction and none-of must both be true");
+}
 pub routine main(): void {
   val TestSuite suite = new TestSuite("logic", arr[
     new TestCase("vacuous_implication_holds", vacuous_implication_holds, false, ""),
-    new TestCase("xor_excludes_identical_inputs", xor_excludes_identical_inputs, false, "")
+    new TestCase("xor_excludes_identical_inputs", xor_excludes_identical_inputs, false, ""),
+    new TestCase("empty_conjunction_is_true", empty_conjunction_is_true, false, "")
   ]);
   val TestOptions options = new TestOptions("", false, true);
   val RunSummary summary = run_suite(rt borrow suite, rt borrow options);
