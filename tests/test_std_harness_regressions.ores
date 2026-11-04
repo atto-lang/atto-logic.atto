@@ -1,0 +1,56 @@
+import class TestCase, TestSuite, TestOptions, TestOutcome, RunSummary from "ores.std/testing";
+import fnc expect_true, expect_false, expect_equal_int, expect_equal_string, expect_near_float, run_suite, require_success, fail from "ores.std/testing";
+import module propositional from "../src/propositional";
+fnc vacuous_implication_holds(): TestOutcome {
+  return expect_true(propositional.implies(false, false),
+    "false premise implies any conclusion");
+}
+fnc xor_excludes_identical_inputs(): TestOutcome {
+  return expect_true(!propositional.exclusive_or(true, true)
+    && propositional.exclusive_or(true, false),
+    "exclusive or is true only when operands differ");
+}
+fnc empty_conjunction_is_true(): TestOutcome {
+  val Array<bool> values = arr[];
+  return expect_true(propositional.all_of(rt borrow values) &&
+    propositional.none_of(rt borrow values),
+    "empty conjunction and none-of must both be true");
+}
+fnc empty_disjunction_is_false(): TestOutcome {
+  val Array<bool> values = arr[];
+  return expect_false(propositional.any_of(rt borrow values),
+    "any_of on zero premises is false");
+}
+
+fnc equivalence_requires_matching_truth(): TestOutcome {
+  return expect_true(propositional.equivalent(false, false)
+    && !propositional.equivalent(false, true),
+    "equivalence matches equal truth values only");
+}
+
+fnc true_premise_false_conclusion_is_rejected(): TestOutcome {
+  return expect_false(propositional.implies(true, false),
+    "a true premise cannot imply a false conclusion");
+}
+
+fnc all_of_rejects_one_false_premise(): TestOutcome {
+  val Array<bool> values = arr[true, false, true];
+  return expect_false(propositional.all_of(rt borrow values),
+    "one false entry must falsify conjunction");
+}
+
+pub routine main(): void {
+  val TestSuite suite = new TestSuite("logic", arr[
+    new TestCase("vacuous_implication_holds", vacuous_implication_holds, false, ""),
+    new TestCase("xor_excludes_identical_inputs", xor_excludes_identical_inputs, false, ""),
+    new TestCase("empty_conjunction_is_true", empty_conjunction_is_true, false, ""),
+    new TestCase("empty_disjunction_is_false", empty_disjunction_is_false, false, ""),
+    new TestCase("equivalence_requires_matching_truth", equivalence_requires_matching_truth, false, ""),
+    new TestCase("true_premise_false_conclusion_is_rejected", true_premise_false_conclusion_is_rejected, false, ""),
+    new TestCase("all_of_rejects_one_false_premise", all_of_rejects_one_false_premise, false, "")
+  ]);
+  val TestOptions options = new TestOptions("", false, true);
+  val RunSummary summary = run_suite(rt borrow suite, rt borrow options);
+  require_success(rt borrow summary);
+  return;
+}
