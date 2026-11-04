@@ -1,0 +1,50 @@
+name: Logic source integrity (non-promoting)
+on:
+  push:
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  source-integrity:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Checkout exact source ref without credentials
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.2.2
+        with:
+          persist-credentials: false
+          fetch-depth: 1
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - name: Validate source/test inventory and negative controls
+        shell: bash
+        env:
+          EXPECTED_HEAD: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          set -euo pipefail
+          [[ "$EXPECTED_HEAD" =~ ^[0-9a-f]{40}$ ]] || exit 2
+          [[ "$(git rev-parse --verify HEAD)" == "$EXPECTED_HEAD" ]] || exit 3
+          [[ -z "$(git status --porcelain=v1 --untracked-files=all --ignored=matching)" ]] || exit 4
+          check_file() { [[ -f "$1" && -s "$1" && ! -L "$1" ]]; }
+          required=(
+            .ores.pkg.toml
+            src/datalog.ores src/horn.ores src/induce.ores src/proof.ores
+            src/propositional.ores src/relate.ores src/term.ores src/unify.ores
+            tests/main.ores tests/compiler_canary.ores
+            tests/logic_advanced_smoke.ores tests/logic_differential.ores
+            tests/logic_edge_cases.ores tests/logic_smoke.ores
+          )
+          for path in "${required[@]}"; do
+            check_file "$path" || { echo "Missing, empty or symlinked fixture: $path" >&2; exit 5; }
+            git ls-files --error-unmatch -- "$path" >/dev/null || exit 6
+          done
+          tmp="$(mktemp -d)"
+          trap 'rm -rf "$tmp"' EXIT
+          printf 'valid\n' > "$tmp/valid.ores"
+          check_file "$tmp/valid.ores" || exit 7
+          : > "$tmp/empty.ores"
+          if check_file "$tmp/empty.ores"; then echo 'FAIL: empty accepted' >&2; exit 8; fi
+          if check_file "$tmp/missing.ores"; then echo 'FAIL: missing accepted' >&2; exit 9; fi
+          ln -s valid.ores "$tmp/link.ores"
+          if check_file "$tmp/link.ores"; then echo 'FAIL: symlink accepted' >&2; exit 10; fi
+          echo "Verified ${#required[@]} required files and 3 structural negative controls"
+          echo "NON-PROMOTING: compiler execution and Oreslang guest semantics not tested"
