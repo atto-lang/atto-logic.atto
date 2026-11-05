@@ -7,7 +7,7 @@ fail() { printf 'ORES_RECEIPT_REJECTED: %s\n' "$*" >&2; exit 1; }
 manifest=$1; output=$2
 [[ -f "$manifest" && -f "$output" && ! -L "$manifest" && ! -L "$output" ]] || fail 'missing/symlinked input'
 [[ $(wc -l < "$manifest") -eq 6 && $(wc -c < "$manifest") -le 1024 ]] || fail 'wrong manifest size'
-[[ $(grep -Ec '^[a-zA-Z0-9_/-]+$' "$manifest") -eq 6 ]] || fail 'invalid manifest names'
+[[ $(grep -Ec '^[A-Za-z0-9_-]+(/[A-Za-z0-9_-]+)*$' "$manifest") -eq 6 ]] || fail 'invalid manifest names'
 [[ $(sort -u "$manifest" | wc -l) -eq 6 ]] || fail 'duplicate manifest entries'
 [[ $(wc -c < "$output") -le 8192 && $(wc -l < "$output") -eq 7 ]] || fail 'wrong stdout size/count'
 [[ $(tail -c 1 "$output" | od -An -tu1 | tr -d '[:space:]') == 10 ]] || fail 'missing final newline'
@@ -20,7 +20,7 @@ chmod 700 "$tmp"
 awk -F '|' -v summary="$summary" '
   NR == 7 { if ($0 != summary) exit 1; next }
   NR < 7 {
-    if (NF != 4 || $1 != "ORES_TEST" || $2 != "PASS" || $3 !~ /^[A-Za-z0-9_\/-]+$/ || $4 != "") exit 1
+    if (NF != 4 || $1 != "ORES_TEST" || $2 != "PASS" || $3 !~ /^[A-Za-z0-9_-]+(\/[A-Za-z0-9_-]+)*$/ || $4 != "") exit 1
     print $3
     next
   }

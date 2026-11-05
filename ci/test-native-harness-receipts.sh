@@ -52,4 +52,16 @@ if bash "$checker" "$tmp/oracle" "$base" >/dev/null 2>&1; then
   exit 1
 fi
 
+# Oracle and stdout collusion must not smuggle parent or empty path segments.
+for alias in '../logic' 'logic//extended' './logic'; do
+  cp "$manifest" "$tmp/oracle"
+  cp "$base" "$mutant"
+  sed -i "1s@logic@$alias@" "$tmp/oracle"
+  sed -i "1s@logic@$alias@" "$mutant"
+  if bash "$checker" "$tmp/oracle" "$mutant" >"$tmp/check.out" 2>"$tmp/check.err"; then
+    echo "HOST_RECEIPT_MUTATION_MISSED: noncanonical_id_$alias" >&2
+    exit 1
+  fi
+done
+
 printf 'HOST_ONLY_RECEIPT_MUTATIONS_PASS cases=22; NOT_COMPILER_EXECUTION\n'
