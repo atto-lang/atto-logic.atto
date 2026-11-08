@@ -25,3 +25,15 @@ This describes the repository's intended purpose, not a verified list of impleme
 - [AttoLang](https://github.com/atto-lang)
 - [ML conformance](https://github.com/atto-lang/atto-ml-conformance)
 - [Language specification](https://github.com/atto-lang/atto-spec)
+
+## Repository ownership and contribution routing
+
+**Belongs here:** Logic-programming experiments in native AttoLang, rules, inference, constraint evaluation and composable declarative APIs.
+
+**Belongs elsewhere:** General language semantics in atto-spec; graph modeling in atto-stategraph.atto; example usage in atto-demos.
+
+**Security and portability boundary:** Bound search depth and memory, avoid dynamic reflection that breaks AOT, and reject nontermination/unsupported inference modes explicitly.
+
+AttoLang is the public name; preserve existing Oreslang/.ores compatibility and use canonical .atto for new portable library source. This README defines scope, not feature readiness.
+
+**Acceptance:** name exact source SHA/tree, runtime/toolchain, positive and negative checks and execution receipt before claiming support. Host-only tests and empty CI steps do not prove guest execution.
