@@ -1,0 +1,58 @@
+// Native Oreslang logic contracts: truth tables and bounded structural checks.
+import class TestCase, TestSuite, TestOptions, RunSummary, TestOutcome from '../vendor/oreslang/testing';
+import fnc expect_true, expect_false, run_suite, require_success from '../vendor/oreslang/testing';
+import module propositional from '../src/propositional';
+import module term from '../src/term';
+
+fnc implication_false_premise(): TestOutcome {
+  return expect_true(propositional.implies(false, false), "false premise implies anything");
+}
+fnc implication_true_false(): TestOutcome {
+  return expect_false(propositional.implies(true, false), "true cannot imply false");
+}
+fnc equivalence_truth_table(): TestOutcome {
+  return expect_true(
+    propositional.equivalent(true, true) &&
+    propositional.equivalent(false, false) &&
+    !propositional.equivalent(true, false) &&
+    !propositional.equivalent(false, true),
+    "equivalence must agree with Boolean equality"
+  );
+}
+fnc xor_truth_table(): TestOutcome {
+  return expect_true(
+    !propositional.exclusive_or(false, false) &&
+    propositional.exclusive_or(false, true) &&
+    propositional.exclusive_or(true, false) &&
+    !propositional.exclusive_or(true, true),
+    "xor must be true exactly for unequal inputs"
+  );
+}
+fnc empty_quantifiers(): TestOutcome {
+  val Array<bool> empty = new Array<bool>();
+  return expect_true(
+    propositional.all_of(rt borrow empty) &&
+    !propositional.any_of(rt borrow empty) &&
+    propositional.none_of(rt borrow empty),
+    "empty all/any/none must obey logical identities"
+  );
+}
+fnc groundness_depth_denied(): TestOutcome {
+  val term.Term literal = term.integer(42);
+  val result = literal.is_ground(0);
+  return expect_true(result.is_err(), "zero-depth groundness must fail closed");
+}
+pub routine main(): void {
+  val TestSuite suite = new TestSuite("logic/extended", arr[
+    new TestCase("implies/false-premise", implication_false_premise, false, ""),
+    new TestCase("implies/true-false", implication_true_false, false, ""),
+    new TestCase("equivalent/truth-table", equivalence_truth_table, false, ""),
+    new TestCase("xor/truth-table", xor_truth_table, false, ""),
+    new TestCase("quantifiers/empty", empty_quantifiers, false, ""),
+    new TestCase("term/groundness-depth", groundness_depth_denied, false, "")
+  ]);
+  val TestOptions options = new TestOptions("", false, true);
+  val RunSummary summary = run_suite(suite, options);
+  require_success(summary);
+  return;
+}
