@@ -1,0 +1,333 @@
+// Failure-first regression checks: all tests are Oreslang guest programs.
+// This module should be run via tests/main.ores by every backend.
+import module term from "../src/term";
+import module unify from "../src/unify";
+import module datalog from "../src/datalog";
+import module proof from "../src/proof";
+import module relate from "../src/relate";
+import module induce from "../src/induce";
+
+define module logic_edge_cases as
+  fnc unification_edges(): bool {
+    val empty = unify.empty();
+    val a = term.variable(1, 4);
+    val b = term.variable(2, 4);
+    let mut Array<term.Term> args = new Array<term.Term>();
+    args.add(a);
+    val compound = term.application("f", args);
+
+    // Direct self-occurrence must fail, not produce an infinite term.
+    val direct = unify.unify(rt borrow a, rt borrow compound,
+                             rt borrow empty, 16, 8);
+    if direct.is_err(); then return false; fi
+    if direct.unwrap().matched; then return false; fi
+
+    // Indirect occurrence through a prior binding must also fail.
+    val alias = unify.unify(rt borrow a, rt borrow b,
+                            rt borrow empty, 16, 8);
+    if alias.is_err(); then return false; fi
+    val linked = alias.unwrap();
+    if !linked.matched; then return false; fi
+    let mut Array<term.Term> b_args = new Array<term.Term>();
+    b_args.add(a);
+    val b_compound = term.application("f", b_args);
+    val indirect = unify.unify(rt borrow b, rt borrow b_compound,
+                               rt borrow linked.bindings, 16, 8);
+    if indirect.is_err(); then return false; fi
+    if indirect.unwrap().matched; then return false; fi
+
+    // Resolving with exhausted depth must be a hard error.
+    val zero_depth = unify.resolve(rt borrow a, rt borrow empty, 0);
+    if !zero_depth.is_err(); then return false; fi
+
+    // Existing same-variable equality must not allocate a binding.
+    val identical = unify.unify(rt borrow a, rt borrow a,
+                                 rt borrow empty, 16, 1);
+    if identical.is_err(); then return false; fi
+    if !identical.unwrap().matched; then return false; fi
+
+    // Variable sorts must be invariant.
+    val sym_var = term.variable(3, 1);
+    val int_var = term.variable(4, 2);
+    val mismatched_sort = unify.unify(rt borrow sym_var, rt borrow int_var,
+                                      rt borrow empty, 16, 8);
+    if mismatched_sort.is_err(); then return false; fi
+    if mismatched_sort.unwrap().matched; then return false; fi
+
+    // Check that partial terms are not accidentally treated as ground.
+    val partial = compound.is_ground(16);
+    if partial.is_err(); then return false; fi
+    if partial.unwrap(); then return false; fi
+    val ground = term.integer(7);
+    val checked = ground.is_ground(16);
+    if checked.is_err(); then return false; fi
+    if !checked.unwrap(); then return false; fi
+    val too_deep = ground.is_ground(0);
+    if !too_deep.is_err(); then return false; fi
+    return true;
+  }
+
+  fnc unification_work_edges(): bool {
+    val env = unify.empty();
+    val first = term.variable(50, 4);
+    val second = term.variable(51, 4);
+    val third = term.variable(52, 4);
+    val leaf = term.application("leaf", new Array<term.Term>());
+
+    // A wide term must consume shared fuel across all siblings, not
+    // reset a per-recursion limit on every child.
+    let mut Array<term.Term> values = new Array<term.Term>();
+    for (let i = 0; i < 12; i++) {
+      values.add(term.integer(i));
+    }
+    val wide = term.application("wide", values);
+    val starved = unify.unify_bounded(rt borrow wide, rt borrow wide,
+                                      rt borrow env, 64, 16, 5);
+    if !starved.is_err(); then return false; fi
+    val sufficient = unify.unify_bounded(rt borrow wide, rt borrow wide,
+                                         rt borrow env, 64, 16, 500);
+    if sufficient.is_err(); then return false; fi
+    val full = sufficient.unwrap();
+    if !full.outcome.matched || full.remaining >= 500; then
+      return false;
+    fi
+
+    // Variable aliasing must charge for each binding scan and dereference.
+    val bind_ab = unify.unify_bounded(rt borrow first, rt borrow second,
+                                      rt borrow env, 64, 16, 500);
+    if bind_ab.is_err(); then return false; fi
+    val first_link = bind_ab.unwrap();
+    if !first_link.outcome.matched; then return false; fi
+    val bind_bc = unify.unify_bounded(rt borrow second, rt borrow third,
+                                      rt borrow first_link.outcome.bindings,
+                                      64, 16, 500);
+    if bind_bc.is_err(); then return false; fi
+    val second_link = bind_bc.unwrap();
+    if !second_link.outcome.matched; then return false; fi
+    val bind_c = unify.unify_bounded(rt borrow third, rt borrow leaf,
+                                     rt borrow second_link.outcome.bindings,
+                                     64, 16, 500);
+    if bind_c.is_err(); then return false; fi
+    val completed = bind_c.unwrap();
+    if !completed.outcome.matched; then return false; fi
+    val underfunded = unify.unify_bounded(rt borrow first, rt borrow leaf,
+                                           rt borrow completed.outcome.bindings,
+                                           64, 16, 2);
+    if !underfunded.is_err(); then return false; fi
+    val funded = unify.unify_bounded(rt borrow first, rt borrow leaf,
+                                     rt borrow completed.outcome.bindings,
+                                     64, 16, 500);
+    if funded.is_err(); then return false; fi
+    if !funded.unwrap().outcome.matched; then return false; fi
+
+    // A late occurs-check witness must consume work for the preceding
+    // sibling terms. Exhaustion must never be interpreted as no cycle.
+    let mut Array<term.Term> late_children = new Array<term.Term>();
+    for (let i = 0; i < 12; i++) {
+      late_children.add(term.integer(i));
+    }
+    late_children.add(first);
+    val late_occurrence = term.application("wide", late_children);
+    val low_occurs = unify.unify_bounded(rt borrow first,
+                                         rt borrow late_occurrence,
+                                         rt borrow env, 64, 16, 8);
+    if !low_occurs.is_err(); then return false; fi
+    val full_occurs = unify.unify_bounded(rt borrow first,
+                                          rt borrow late_occurrence,
+                                          rt borrow env, 64, 16, 500);
+    if full_occurs.is_err(); then return false; fi
+    if full_occurs.unwrap().outcome.matched; then return false; fi
+
+    val zero = unify.unify_bounded(rt borrow first, rt borrow second,
+                                    rt borrow env, 64, 16, 0);
+    if !zero.is_err(); then return false; fi
+    return true;
+  }
+
+  fnc datalog_edges(): bool {
+    let mut Array<datalog.Schema> schemas = new Array<datalog.Schema>();
+    let no_columns = new Array<int>();
+    schemas.add(new datalog.Schema("ready", no_columns));
+    let mut Array<int> one_symbol = new Array<int>();
+    one_symbol.add(1);
+    schemas.add(new datalog.Schema("mark", one_symbol));
+
+    // Zero-ary extensional facts and a zero-body rule are permitted.
+    let seeds = new Array<datalog.Atom>();
+    let mut Array<datalog.Rule> rules = new Array<datalog.Rule>();
+    val ready_fact = new datalog.Atom("ready", new Array<term.Term>());
+    rules.add(new datalog.Rule(ready_fact, new Array<datalog.Atom>()));
+    val derived = datalog.evaluate(rt borrow schemas, rt borrow seeds,
+                                   rt borrow rules, 2, 100);
+    if derived.is_err(); then return false; fi
+    val kb = derived.unwrap();
+    if kb.facts.length() != 1; then return false; fi
+    if !kb.contains(rt borrow ready_fact); then return false; fi
+    val explanation = proof.explain(rt borrow kb, rt borrow ready_fact, 2, 4);
+    if explanation.is_err(); then return false; fi
+    if explanation.unwrap().steps.length() != 1; then return false; fi
+    val missing = new datalog.Atom("mark", new Array<term.Term>());
+    if kb.contains(rt borrow missing); then return false; fi
+
+    // Zero budget, duplicate schemas, and non-ground facts must be rejected.
+    val bad_budget = datalog.evaluate(rt borrow schemas, rt borrow seeds,
+                                      rt borrow rules, 0, 100);
+    if !bad_budget.is_err(); then return false; fi
+    let mut Array<datalog.Schema> duplicates = new Array<datalog.Schema>();
+    duplicates.add(new datalog.Schema("ready", new Array<int>()));
+    duplicates.add(new datalog.Schema("ready", new Array<int>()));
+    val duplicate_result = datalog.evaluate(rt borrow duplicates, rt borrow seeds,
+                                             rt borrow rules, 4, 100);
+    if !duplicate_result.is_err(); then return false; fi
+
+    let mut Array<datalog.Atom> non_ground = new Array<datalog.Atom>();
+    let mut Array<term.Term> variable_columns = new Array<term.Term>();
+    variable_columns.add(term.variable(7, 1));
+    non_ground.add(new datalog.Atom("mark", variable_columns));
+    val non_ground_result = datalog.evaluate(rt borrow schemas,
+                                              rt borrow non_ground,
+                                              rt borrow rules, 4, 100);
+    if !non_ground_result.is_err(); then return false; fi
+
+    // Unbound head variables (range-restriction failures) fail closed.
+    let mut Array<term.Term> unbound_columns = new Array<term.Term>();
+    unbound_columns.add(term.variable(9, 1));
+    let unbound_head = new datalog.Atom("mark", unbound_columns);
+    let no_body = new Array<datalog.Atom>();
+    let mut Array<datalog.Rule> unsafe_rules = new Array<datalog.Rule>();
+    unsafe_rules.add(new datalog.Rule(unbound_head, no_body));
+    val unsafe_result = datalog.evaluate(rt borrow schemas, rt borrow seeds,
+                                          rt borrow unsafe_rules, 4, 100);
+    if !unsafe_result.is_err(); then return false; fi
+    return true;
+  }
+
+  fnc datalog_shared_fuel_edges(): bool {
+    // One join candidate and a single typed comparison. Charging only the
+    // outer join would incorrectly make this tiny work budget sufficient.
+    let mut Array<datalog.Schema> schemas = new Array<datalog.Schema>();
+    let mut Array<int> one_int = new Array<int>();
+    one_int.add(2);
+    schemas.add(new datalog.Schema("source", one_int));
+    schemas.add(new datalog.Schema("derived", one_int));
+
+    let mut Array<term.Term> seed_columns = new Array<term.Term>();
+    seed_columns.add(term.integer(42));
+    let mut Array<datalog.Atom> seed = new Array<datalog.Atom>();
+    seed.add(new datalog.Atom("source", seed_columns));
+
+    let v = term.variable(7, 2);
+    let mut Array<term.Term> vars = new Array<term.Term>();
+    vars.add(v);
+    let mut Array<datalog.Atom> body = new Array<datalog.Atom>();
+    body.add(new datalog.Atom("source", vars));
+    let mut Array<datalog.Rule> rules = new Array<datalog.Rule>();
+    rules.add(new datalog.Rule(new datalog.Atom("derived", vars), body));
+
+    val insufficient = datalog.evaluate(rt borrow schemas, rt borrow seed,
+                                         rt borrow rules, 2, 2);
+    if !insufficient.is_err(); then return false; fi
+
+    val full = datalog.evaluate(rt borrow schemas, rt borrow seed,
+                                rt borrow rules, 2, 256);
+    if full.is_err(); then return false; fi
+    val known = full.unwrap();
+    if known.facts.length() != 2; then return false; fi
+    let mut Array<term.Term> target_columns = new Array<term.Term>();
+    target_columns.add(term.integer(42));
+    val target = new datalog.Atom("derived", target_columns);
+    if !known.contains(rt borrow target); then return false; fi
+    return true;
+  }
+
+  fnc datalog_malformed_term_edges(): bool {
+    let mut Array<int> symbol_column = new Array<int>();
+    symbol_column.add(1);
+    let mut Array<datalog.Schema> schemas = new Array<datalog.Schema>();
+    schemas.add(new datalog.Schema("mark", symbol_column));
+
+    let mut Array<term.Term> valid_values = new Array<term.Term>();
+    valid_values.add(term.symbol("alice"));
+    val valid = new datalog.Atom("mark", valid_values);
+    let mut Array<datalog.Atom> seeds = new Array<datalog.Atom>();
+    seeds.add(valid);
+    val no_rules = new Array<datalog.Rule>();
+    val evaluated = datalog.evaluate(rt borrow schemas, rt borrow seeds,
+                                      rt borrow no_rules, 2, 100);
+    if evaluated.is_err(); then return false; fi
+    val kb = evaluated.unwrap();
+    if !kb.contains(rt borrow valid); then return false; fi
+
+    // The raw Term constructor is public. Public membership queries must
+    // reject a forged type_id, even if the kind and symbol value match.
+    let mut Array<term.Term> wrong_type_values = new Array<term.Term>();
+    wrong_type_values.add(new term.Term(1, 2, -1, "alice", 0, false,
+                                        new Array<term.Term>()));
+    val wrong_type_query = new datalog.Atom("mark", wrong_type_values);
+    if kb.contains(rt borrow wrong_type_query); then return false; fi
+    if datalog.same(rt borrow valid, rt borrow wrong_type_query); then
+      return false;
+    fi
+
+    // Forged scalar applications are not valid flat relational columns.
+    let mut Array<term.Term> children = new Array<term.Term>();
+    children.add(term.symbol("extra"));
+    let mut Array<term.Term> wrong_shape_values = new Array<term.Term>();
+    wrong_shape_values.add(new term.Term(1, 1, -1, "alice", 0, false,
+                                         children));
+    val wrong_shape_query = new datalog.Atom("mark", wrong_shape_values);
+    if kb.contains(rt borrow wrong_shape_query); then return false; fi
+
+    // Similarly, an apparent rule variable carrying children must be
+    // rejected at rule-validation time rather than silently matched.
+    let mut Array<term.Term> forged_var_values = new Array<term.Term>();
+    forged_var_values.add(new term.Term(0, 1, 7, "", 0, false, children));
+    val forged_pattern = new datalog.Atom("mark", forged_var_values);
+    let mut Array<datalog.Atom> body = new Array<datalog.Atom>();
+    body.add(forged_pattern);
+    let mut Array<datalog.Rule> invalid = new Array<datalog.Rule>();
+    invalid.add(new datalog.Rule(forged_pattern, body));
+    val rejected = datalog.evaluate(rt borrow schemas, rt borrow seeds,
+                                     rt borrow invalid, 2, 100);
+    if !rejected.is_err(); then return false; fi
+    return true;
+  }
+
+  fnc relational_edges(): bool {
+    val branches = new Array<relate.Branch>();
+    val empty_result = relate.run(rt borrow branches, 4, 4);
+    if empty_result.is_err(); then return false; fi
+    val s = empty_result.unwrap();
+    if !s.complete || s.answers.length() != 0 || s.steps != 0; then
+      return false;
+    fi
+    val invalid_budget = relate.run(rt borrow branches, 0, 4);
+    if !invalid_budget.is_err(); then return false; fi
+    return true;
+  }
+
+  fnc induction_edges(): bool {
+    let mut Array<induce.Example> samples = new Array<induce.Example>();
+    samples.add(new induce.Example("not_enough_holdout", true, true, false));
+    samples.add(new induce.Example("not_enough_holdout", true, true, false));
+    val result = induce.score(rt borrow samples, 2, 1, 500);
+    if result.is_err(); then return false; fi
+    val hypotheses = result.unwrap();
+    if hypotheses.length() != 1; then return false; fi
+    if hypotheses.get(0).accepted; then return false; fi
+    val invalid = induce.score(rt borrow samples, 2, 1, 1001);
+    if !invalid.is_err(); then return false; fi
+    return true;
+  }
+
+  pub fnc run(): bool {
+    if !unification_edges(); then return false; fi
+    if !unification_work_edges(); then return false; fi
+    if !datalog_edges(); then return false; fi
+    if !datalog_shared_fuel_edges(); then return false; fi
+    if !datalog_malformed_term_edges(); then return false; fi
+    if !relational_edges(); then return false; fi
+    if !induction_edges(); then return false; fi
+    return true;
+  }
+end
