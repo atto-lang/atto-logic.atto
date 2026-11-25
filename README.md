@@ -1,89 +1,51 @@
-# Oreslang Logic
+> **AI agent instructions (organization-wide):** Before working on code, issues, or pull requests, read and follow the [organization `AGENTS.md`](https://github.com/atto-lang/.github/blob/main/AGENTS.md), including its **merge-first stealth-development policy**. Honor any repository-local `AGENTS.md`, explicit holds, and GitHub-enforced rules.
 
-Pure **userland Oreslang** logic programming: deductions, reductions,
-typed relational rules, unification, proof tracing, fair finite searches and
-experimental inductive hypothesis scoring.
+# atto-logic.atto
 
-**No Java, C++, C#, JavaScript, Python, FFI or external logic engine is used
-to implement the library.** All implementation files are `.ores`, and the
-regression suites are `.ores` too. No special compiler dialect is required
-by the design, although current backend compilers may not yet support every
-language construct used here.
+Logic programming and declarative reasoning experiments using AttoLang.
 
-## Modules
+## Naming migration and language authority
 
-| Source | Purpose |
-| --- | --- |
-| `src/propositional.ores` | implication, equivalence, XOR, all/any/none |
-| `src/horn.ores` | bounded propositional positive Horn deduction |
-| `src/term.ores` | typed variables, values, structured terms |
-| `src/unify.ores` | occurs-checked unification with shared operation fuel |
-| `src/datalog.ores` | schema-typed positive Datalog with semi-naive joins |
-| `src/proof.ores` | first-witness provenance extraction |
-| `src/relate.ores` | FIFO-fair finite equality-goal branches |
-| `src/induce.ores` | train/holdout feature implication scoring |
+This repository is maintained at [atto-lang/atto-logic.atto](https://github.com/atto-lang/atto-logic.atto); use `https://github.com/atto-lang/atto-logic.atto.git` for Git remotes and canonical `.atto` source examples. The normative language contract is [atto-spec](https://github.com/atto-lang/atto-spec), with executable guest evidence tracked by [atto-platform-conformance](https://github.com/atto-lang/atto-platform-conformance). Follow current ownership, borrowing, effects, actor, and syntax rules there; do not infer implemented features from a README or unexecuted CI.
 
-## Example: deductions
+## Scope
 
-Use schemas `parent(symbol, symbol)` and `ancestor(symbol, symbol)`.
-Add seed facts `parent(alice,bob)` and `parent(bob,carol)`.
-Rules:
+Rules, logical inference, and composable declarative control flow.
 
-```text
-ancestor(X,Y) :- parent(X,Y).
-ancestor(X,Z) :- parent(X,Y), ancestor(Y,Z).
-```
+## API and portability principles
 
-Calling `datalog.evaluate(schemas, facts, rules, max_facts, max_work)`
-computes the least fixed point, including `ancestor(alice,carol)`.
-Use `proof.explain(knowledge, target, max_nodes, max_depth)` to obtain
-one ordered derivation. This is a description of the fixture in
-`tests/logic_advanced_smoke.ores`, **not a claim that it has run**.
+- Specify numerical/semantic behavior before assuming support on every backend.
+- Document input types, error behavior, shape and memory ownership requirements as applicable.
+- Distinguish CPU execution, SIMD, GPU offload, and other target-specific capabilities.
 
-Datalog column types are schema-checked at runtime: symbol, int, bool.
-Unknown relations, ill-typed values, unbound head variables and exhausted
-resource budgets return `Err`; there is no silent truncation of deductions.
+## Verification
 
-## Tests and status
+Use checked-in tests, documented tolerances, and exact-commit runtime evidence. Host-only or compilation tests are not equivalent to executed AttoLang guest tests. Record backend gaps explicitly.
 
-- `tests/logic_smoke.ores`: propositional and baseline Horn tests.
-- `tests/logic_advanced_smoke.ores`: recursive rules, proof trace, typed
-  unification, occurs check, budgets, unsafe rules, fair search and induction.
-- `tests/logic_edge_cases.ores`: indirect cyclic terms, wide-term
-  fuel exhaustion, alias chains, Datalog shared work limits, invalid schemas,
-  empty-body rules, zero-arity facts and holdout rejection.
-- `tests/compiler_canary.ores`: independent scalar compiler/runner admission
-  test; it does **not** exercise the logic engine.
-- `tests/logic_differential.ores`: independent positive Horn/Datalog
-  fixed-point equivalence checks, recursive cycles and fact-budget failures.
-- `tests/main.ores`: runs all four logic suites; exit `0` means success,
-  `1`/`2`/`3`/`4` identify the failing suite.
-- `.ores.pkg.toml`: package discovery and source roots.
+## Development status
 
-A new `.github/workflows/source-integrity.yml` checks exact checkout identity,
-required source/guest-test file presence, and three negative structural controls
-(missing, empty, symlink). **That workflow is source-only, not compiler or guest
-execution**; a green status does not certify logic semantics or native parity.
+This describes the repository's intended purpose, not a verified list of implemented features. Refer to checked-in code and CI for current functionality and validated commands.
 
-**Execution status: not yet verified.** No genuine compiler has run these
-fixtures in this development session. The library does not claim five-backend
-parity or zero allocations. See [DESIGN.md](DESIGN.md) and
-[verification gates](docs/VERIFICATION.md).
+## Related
 
-## Future optimization
+- [AttoLang](https://github.com/atto-lang)
+- [ML conformance](https://github.com/atto-lang/atto-ml-conformance)
+- [Language specification](https://github.com/atto-lang/atto-spec)
 
-Prefer actor-owned persistent relations, indexed joins, and SoA/AoSoA
-representations before using this evaluator in latency-sensitive loops.
-These are implementation improvements, not changes to the library's
-logical semantics.
+## Repository ownership and contribution routing
 
-## Repository ownership and migration (2026-11-08)
+**Belongs here:** Logic-programming experiments in native AttoLang, rules, inference, constraint evaluation and composable declarative APIs.
 
-**AttoLang** is the public name of the language; this code remains `ores-truffle-oreslang/oreslang-logic.ores` (historical Oreslang). Preserve existing `.ores` source compatibility, old package names and CLI identifiers until separately proven changes are merged.
+**Belongs elsewhere:** General language semantics in atto-spec; graph modeling in atto-stategraph.atto; example usage in atto-demos.
 
-- **Scope:** logic programming and typed reasoning prototypes in AttoLang.
-- **Excluded:** commercial LLM hosting, unsafe execution or generic compiler lowering.
-- **Organizational responsibility:** [atto-lang](https://github.com/atto-lang) owns portable language libraries, research code, compilers, tooling, demos and conformance; [atto-co](https://github.com/atto-co) independently owns cloud hosting, deployments, tenant infrastructure, identity, commercial services and billing. Pre-existing similarly named `atto-*` repositories are distinct Git identities absent transfer receipts.
-- **Proposed first migration:** authorized GitHub transfer of the same original repo ID/name/history into `atto-lang/oreslang-logic.ores`; no direct old-org → `atto-co` transfers are approved under the current plan. Any later product carve-out requires independent review.
+**Security and portability boundary:** Bound search depth and memory, avoid dynamic reflection that breaks AOT, and reject nontermination/unsupported inference modes explicitly.
 
-**Per-repo cutover checklist:** coordinate in [issue #26](https://github.com/ores-truffle-oreslang/.github/issues/26) and consult private [migration runbook draft #25](https://github.com/ores-truffle-oreslang/.github/pull/25). Before moving, verify exact commit SHA/tree and stable numeric ID, source/target owner and independent security approval, destination availability/visibility/protections, Actions/runners, secrets, webhooks, Apps, PRs/releases, packages/consumer URLs, Pages and rollback owner. Don't mirror private source without authorization. After an approved GitHub ownership transfer verify ID/history/tree equivalence, restore access and policy, update consumers and rerun exact-head tests with **nonzero executed steps**. `steps=[]`/`null` means `NOT_EXECUTED`; static or host-only tests do not certify real AttoLang guest code or security isolation.
+AttoLang is the canonical project name; new source, examples and documentation use `.atto` and the `atto-lang` repository organization. This README defines scope, not feature readiness.
+
+**Acceptance:** name exact source SHA/tree, runtime/toolchain, positive and negative checks and execution receipt before claiming support. Host-only tests and empty CI steps do not prove guest execution.
+
+## Legacy migration provenance and gates
+
+The original `ores-truffle-oreslang/oreslang-logic.ores` repository is archived; this AttoLang repository has a separate numeric GitHub identity. Historical `.ores` files, imports, package names and CLI identifiers are compatibility history, not evidence of current `.atto` execution. Logic programming and typed reasoning prototypes belong here; commercial LLM hosting, unsafe execution and generic compiler lowering do not.
+
+[atto-lang](https://github.com/atto-lang) owns language libraries, compilers, tooling, tests and examples; [atto-co](https://github.com/atto-co) owns hosted deployment, tenant infrastructure, identity and billing. A future original-ID transfer or product carve-out requires separate source/target owner and independent security approval. Inventory exact SHA/tree, numeric ID, visibility, permissions, protections, PRs, releases, packages, dependencies, runners, secrets, applications, webhooks, Pages and rollback owner; verify preservation and rerun exact-head tests after an actual transfer. Never mirror private source without authorization. Zero-step jobs are NOT_EXECUTED; host-only checks do not establish native guest/compiler execution or security isolation.
